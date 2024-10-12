@@ -1,14 +1,14 @@
 import util
 
 
-DEFAULT_STATE = 'O|OO|O-O|OOOO|OOOOO'
+DEFAULT_STATE = "O|OO|O-O|OOOO|OOOOO"
 
 
 class Cell:
-    PEG = 'O'
-    EMPTY = '-'
-    FORE = {'O': 'yellow', '-': 'white'}
-    BACK = {'O': 'black', '-': 'black'}
+    PEG = "O"
+    EMPTY = "-"
+    FORE = {"O": "yellow", "-": "white"}
+    BACK = {"O": "black", "-": "black"}
 
     @classmethod
     def color(cls, c):
@@ -26,17 +26,17 @@ class Action:
         self.yo = yo
 
     def __str__(self):
-        return f'jump({self.x},{self.y},{self.x2},{self.y2})'
+        return f"jump({self.x},{self.y},{self.x2},{self.y2})"
 
 
 class State:
 
     def __init__(self, string):
-        self.board = [list(line) for line in string.split('|')]
+        self.board = [list(line) for line in string.split("|")]
         self.max_y = len(self.board)
 
     def __str__(self):
-        return '|'.join([''.join(row) for row in self.board])
+        return "|".join(["".join(row) for row in self.board])
 
     def __eq__(self, state):
         return str(self) == str(state)
@@ -80,13 +80,11 @@ class State:
         actions = []
         for x, y in self.all_xy():
             if self.get(x, y) == Cell.PEG:
-                deltas = [(-1, 0), (0, +1), (+1, +1),
-                          (+1, 0), (0, -1), (-1, -1)]
+                deltas = [(-1, 0), (0, +1), (+1, +1), (+1, 0), (0, -1), (-1, -1)]
                 for dx, dy in deltas:
-                    xo, yo = x+dx, y+dy
-                    x2, y2 = x+2*dx, y+2*dy
-                    if (self.get(xo, yo) == Cell.PEG
-                            and self.get(x2, y2) == Cell.EMPTY):
+                    xo, yo = x + dx, y + dy
+                    x2, y2 = x + 2 * dx, y + 2 * dy
+                    if self.get(xo, yo) == Cell.PEG and self.get(x2, y2) == Cell.EMPTY:
                         action = Action(x, y, x2, y2, xo, yo)
                         actions.append(action)
         actions.sort(key=lambda action: str(action))
@@ -105,25 +103,31 @@ class State:
         return self._clone()._execute(action)
 
     def pprint_string(self):
-        return '\n'.join([
-            ((' ' * (1 + self.max_y - len(row))) +
-                util.color_string(' ', back='black').join([Cell.color(c) for c in row]) +
-                (' ' * (self.max_y - len(row))))
-            for row in self.board
-        ])
+        return "\n".join(
+            [
+                (
+                    (" " * (1 + self.max_y - len(row)))
+                    + util.color_string(" ", back="black").join(
+                        [Cell.color(c) for c in row]
+                    )
+                    + (" " * (self.max_y - len(row)))
+                )
+                for row in self.board
+            ]
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     cmd = util.get_arg(1)
 
     string = util.get_arg(2) or DEFAULT_STATE
     state = State(string)
 
-    if cmd == 'print':
+    if cmd == "print":
         util.pprint([state])
-    elif cmd == 'goal':
+    elif cmd == "goal":
         print(state.is_goal())
-    elif cmd == 'actions':
+    elif cmd == "actions":
         for action in state.get_actions():
             print(action)
