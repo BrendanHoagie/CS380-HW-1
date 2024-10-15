@@ -1,4 +1,5 @@
 import util
+from enum import IntEnum
 import random
 from iq import State
 from typing_extensions import Self
@@ -95,8 +96,90 @@ class Node:
         util.pprint([node.get_state() for node in self.get_path(from_root=True)])
 
 
+class SearchType(IntEnum):
+    BFS = 0
+    DFS = 1
+    ASTAR = 2
+
+
 class Agent:
     DEFAULT_STATE = "O|OO|O-O|OOOO|OOOOO"
+
+    def _search(
+        self,
+        state: State,
+        search_type: SearchType,
+    ) -> tuple[list, int]:
+        """The main search function through the state space
+
+        Args:
+            state: a State object representing the starting state of the board
+            search_type: a SearchType enum representing the type of search it should run
+
+        Returns: a tuple containing:
+            a list of States containing the path from the root
+            an int tallying the total number of state nodes searched
+        """
+        closed = set()
+        fringe = [Node(state)]
+        cur_node = None
+        num_seen = 0
+        while True:
+            num_seen += 1
+
+            # not done & no more unexplored nodes -> No path exists
+            if len(fringe) == 0:
+                return fringe, -1
+            cur_node = fringe.pop(0)
+
+            # found the goal
+            if cur_node.get_state().is_goal():
+                break
+
+            # this isn't the goal -> expand states
+            closed.add(cur_node)
+            for action in cur_node.get_state().get_actions():
+                new_state = cur_node.get_state().execute(action)
+                closed_states = [closed_node.get_state() for closed_node in closed]
+                fringe_states = [fringe_node.get_state() for fringe_node in fringe]
+                if not new_state in closed_states and not new_state in fringe_states:
+                    new_node = Node(new_state, cur_node)
+                    if search_type == SearchType.BFS:
+                        fringe.append(new_node)
+                        continue
+                    if search_type == SearchType.DFS:
+                        fringe.insert(0, new_node)
+                        continue
+                    # A* goes here
+
+        # Return the walk from the root & the total number of nodes analyzed
+        return [
+            node.get_state() for node in cur_node.get_path(from_root=True)
+        ], num_seen
+
+    def bfs(self, state: State) -> tuple[list, int]:
+        """A bfs through the state space
+
+        Args:
+            state: a State object representing the starting state of the board
+
+        Returns: a tuple containing:
+            a list of States containing the path from the root
+            an int tallying the total number of state nodes searched
+        """
+        return self._search(state=state, search_type=SearchType.BFS)
+
+    def dfs(self, state: State) -> tuple[list, int]:
+        """A dfs through the state space
+
+        Args:
+            state: a State object representing the starting state of the board
+
+        Returns: a tuple containing:
+            a list of States containing the path from the root
+            an int tallying the total number of state nodes searched
+        """
+        return self._search(state=state, search_type=SearchType.DFS)
 
     def random_walk(self, state: State = State(DEFAULT_STATE), n: int = 8) -> list:
         """A random walk through the state space
@@ -107,7 +190,7 @@ class Agent:
 
         Returns: a list of States containing the path from the root
         """
-        current_node = None
+        cur_node = None
         prev_node = Node(state, None)
         counter = 1
         while counter < n:
@@ -124,8 +207,9 @@ class Agent:
             # otherwise choose a new state
             chosen_action = actions[random.randint(0, len(actions) - 1)]
             state = state.execute(chosen_action)
-            current_node = Node(state, prev_node)
-            prev_node = current_node
+            cur_node = Node(state, prev_node)
+            prev_node = cur_node
             counter += 1
 
-        return [node.get_state() for node in current_node.get_path(from_root=True)]
+        # get the states as a walk from the root
+        return [node.get_state() for node in cur_node.get_path(from_root=True)]
