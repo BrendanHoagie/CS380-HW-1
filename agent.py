@@ -7,24 +7,31 @@ from typing_extensions import Self
 
 class Node:
 
+    DEFAULT_VALUE = 0
+
     def __init__(
         self,
         state: State = None,
         parent: Self = None,
-        value: int = -1,
+        value: int = DEFAULT_VALUE,
     ) -> None:
         self._state = state
         self._parent = parent
-        self._value = value
+        self._value = (
+            value
+            if value != self.DEFAULT_VALUE
+            else self.DEFAULT_VALUE if not parent else parent.get_value() + 1
+        )
 
     def get_state(self) -> State:
         """Gets the node's current state
 
-        Returns: State
+        Returns:
+            a State representing the current board state
         """
         return self._state
 
-    def set_state(self, new_state) -> None:
+    def set_state(self, new_state: State) -> None:
         """Sets the node's current state
 
         Args:
@@ -35,26 +42,32 @@ class Node:
     def get_parent(self) -> Self:
         """Gets the node's parent
 
-        Returns: Node | None
+        Returns:
+            a Node that is the parent of this node. May be None
         """
         return self._parent
 
-    def set_state(self, new_parent) -> None:
+    def set_parent(self, new_parent: Self) -> None:
         """Sets the node's parent
 
         Args:
             new_parent: a Node representing the parent of this node
+
+        Side Effects:
+            updates the node's value to the parent's value if the new parent is not null
         """
         self._parent = new_parent
+        self._value = self._parent.get_value() + 1 if self._parent else self.DEFAULT_VALUE
 
     def get_value(self) -> int:
         """Gets the node's value
 
-        Returns: Int
+        Returns:
+            an int representing the node's current value
         """
         return self._value
 
-    def set_value(self, new_value) -> None:
+    def set_value(self, new_value: int) -> None:
         """Sets the node's current value
 
         Args:
@@ -63,7 +76,7 @@ class Node:
         self._value = new_value
 
     def pprint(self) -> None:
-        """Print the current node data in a nice format"""
+        """Debug function, print the current node data in a nice format"""
         print("State:")
         util.pprint([self._state])
         print(f"parent: {self._parent}")
@@ -76,7 +89,8 @@ class Node:
             from_root: a Bool representing if the path should start from the root of the node
             tree or if the path should start from this current node
 
-        Returns: a list of nodes in the order specified
+        Returns:
+            a list of nodes in the order specified
         """
         stack = []
         lst = []
@@ -97,6 +111,8 @@ class Node:
 
 
 class SearchType(IntEnum):
+    """An enum for the Agent class' _search function"""
+
     BFS = 0
     DFS = 1
     ASTAR = 2
@@ -105,32 +121,43 @@ class SearchType(IntEnum):
 class Agent:
     DEFAULT_STATE = "O|OO|O-O|OOOO|OOOOO"
 
-    def _search(
-        self,
-        state: State,
-        search_type: SearchType,
-    ) -> tuple[list, int]:
+    def _search(self, state: State, search_type: SearchType, heuristic: callable = None) -> int:
         """The main search function through the state space
 
         Args:
             state: a State object representing the starting state of the board
             search_type: a SearchType enum representing the type of search it should run
 
-        Returns: a tuple containing:
-            a list of States containing the path from the root
+        Returns:
             an int tallying the total number of state nodes searched
         """
+
+        def a_star_sort(node: Node) -> int:
+            """The sort function used for A* search
+
+            Args:
+                node: a Node object representing the current node from fringe
+
+            Returns:
+                an int representing the total weight of this node's state
+            """
+            return node.get_value() + heuristic(node.get_state())
+
         closed = set()
         fringe = [Node(state)]
         cur_node = None
         num_seen = 0
         while True:
-            num_seen += 1
-
             # not done & no more unexplored nodes -> No path exists
-            if len(fringe) == 0:
-                return fringe, -1
+            if not fringe:
+                return -1
+
+            # get next node
+            if search_type == SearchType.ASTAR:
+                fringe.sort(key=a_star_sort)
             cur_node = fringe.pop(0)
+            util.pprint([node.get_state() for node in cur_node.get_path(from_root=True)])
+            num_seen += 1
 
             # found the goal
             if cur_node.get_state().is_goal():
@@ -150,45 +177,50 @@ class Agent:
                     if search_type == SearchType.DFS:
                         fringe.insert(0, new_node)
                         continue
-                    # A* goes here
+                    if search_type == SearchType.ASTAR:
+                        fringe.append(new_node)
 
-        # Return the walk from the root & the total number of nodes analyzed
-        return [
-            node.get_state() for node in cur_node.get_path(from_root=True)
-        ], num_seen
+        return num_seen
 
-    def bfs(self, state: State) -> tuple[list, int]:
+    def bfs(self, state: State) -> int:
         """A bfs through the state space
 
         Args:
             state: a State object representing the starting state of the board
 
-        Returns: a tuple containing:
-            a list of States containing the path from the root
+        Returns:
             an int tallying the total number of state nodes searched
         """
         return self._search(state=state, search_type=SearchType.BFS)
 
-    def dfs(self, state: State) -> tuple[list, int]:
+    def dfs(self, state: State) -> int:
         """A dfs through the state space
 
         Args:
             state: a State object representing the starting state of the board
 
-        Returns: a tuple containing:
-            a list of States containing the path from the root
+        Returns:
             an int tallying the total number of state nodes searched
         """
         return self._search(state=state, search_type=SearchType.DFS)
 
-    def random_walk(self, state: State = State(DEFAULT_STATE), n: int = 8) -> list:
+    def a_star(self, state: State, heuristic: callable) -> int:
+        """A dfs through the state space
+
+        Args:
+            state: a State object representing the starting state of the board
+
+        Returns:
+            an int tallying the total number of state nodes searched
+        """
+        return self._search(state=state, search_type=SearchType.ASTAR, heuristic=heuristic)
+
+    def random_walk(self, state: State = State(DEFAULT_STATE), n: int = 8) -> None:
         """A random walk through the state space
 
         Args:
             state: a State object representing the starting state of the board
             n: a positive int representing the number of total possible states to be checked
-
-        Returns: a list of States containing the path from the root
         """
         cur_node = None
         prev_node = Node(state, None)
@@ -197,11 +229,16 @@ class Agent:
             actions = state.get_actions()
 
             # if we've hit a dead end before checking n nodes, go back a level
-            if len(actions) == 0:
-                if prev_node:
+            if not actions:
+                if prev_node and prev_node.get_state() != state:
                     state = prev_node.get_state()
                     continue
-                print("\n\nNo more valid states\n\n")
+
+                # crash out if at end of search
+                print(
+                    f"Could not search {n} states, no more valid states after {counter} iterations"
+                )
+                util.pprint([node.get_state() for node in cur_node.get_path(from_root=True)])
                 break
 
             # otherwise choose a new state
@@ -211,5 +248,5 @@ class Agent:
             prev_node = cur_node
             counter += 1
 
-        # get the states as a walk from the root
-        return [node.get_state() for node in cur_node.get_path(from_root=True)]
+        # print the visited states as a walk from the root
+        util.pprint([node.get_state() for node in cur_node.get_path(from_root=True)])

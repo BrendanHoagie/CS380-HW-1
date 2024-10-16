@@ -107,9 +107,7 @@ class State:
             [
                 (
                     (" " * (1 + self.max_y - len(row)))
-                    + util.color_string(" ", back="black").join(
-                        [Cell.color(c) for c in row]
-                    )
+                    + util.color_string(" ", back="black").join([Cell.color(c) for c in row])
                     + (" " * (self.max_y - len(row)))
                 )
                 for row in self.board

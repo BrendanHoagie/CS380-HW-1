@@ -37,9 +37,7 @@ def pprint(objs, sep=" ", per_row=8, indent=0, sort=False):
     """Pretty-prints an object or list of objects, using pprint_string() if available"""
     if not isinstance(objs, list):
         objs = [objs]
-    objs = [
-        o.pprint_string() if getattr(o, "pprint_string", None) else str(o) for o in objs
-    ]
+    objs = [o.pprint_string() if getattr(o, "pprint_string", None) else str(o) for o in objs]
     if sort:
         objs.sort()
     if len(objs) > per_row:
